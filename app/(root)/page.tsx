@@ -1,66 +1,90 @@
-import React from 'react'
-import {redirect} from "next/navigation";
+import React from "react";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import {dummyInterviews } from "@/constants";
 import InterviewCard from "@/components/InterviewCard";
+import {
+    getCurrentUser,
+    getInterviewsByUserId,
+    getLatestInterviews,
+} from "@/lib/actions/auth.action";
 
-const Page = () => {
+const Page = async () => {
+    const user = await getCurrentUser();
+
+    // 🔐 Protect route
+    if (!user) {
+        redirect("/sign-in");
+    }
+
+    // 📦 Fetch interviews in parallel
+    const [userInterviews, latestInterviews] = await Promise.all([
+        getInterviewsByUserId(user.id),
+        getLatestInterviews({ userId: user.id, limit: 20 }),
+    ]);
+
+    const hasPastInterviews = (userInterviews?.length ?? 0) > 0;
+    const hasUpcomingInterviews = (latestInterviews?.length ?? 0) > 0;
+
     return (
         <>
+            {/* CTA Section */}
             <section className="card-cta">
                 <div className="flex flex-col gap-6 max-w-lg">
                     <h2>
                         Get Interview-Ready with AI-Powered Practice & Feedback
                     </h2>
                     <p className="text-lg">
-                       Practice on real interview questions & get instant feedback
-
+                        Practice on real interview questions & get instant feedback
                     </p>
-                   <Button asChild className="btn-primary max-sm:w-full">
-                       <Link href="/interview">start an interview</Link>
 
-                   </Button>
-
-
+                    {/* 🚀 This navigates to the Agent page */}
+                    <Button asChild className="btn-primary max-sm:w-full">
+                        <Link href="/interview">Start an Interview</Link>
+                    </Button>
                 </div>
-                <Image src="/robot.png" alt="robo-dude" width={400} height={400} className="max-sm:hidden"/>
+
+                <Image
+                    src="/robot.png"
+                    alt="robo-dude"
+                    width={400}
+                    height={400}
+                    className="max-sm:hidden"
+                />
             </section>
+
+            {/* Your Interviews */}
             <section className="flex flex-col gap-6 mt-8">
-                <h2>
-                    Your Interviews
-                </h2>
+                <h2>Your Interviews</h2>
+
                 <div className="interviews-section">
-                    {dummyInterviews.map((interview)=>
-                        <InterviewCard {...interview} key={interview.id}/>
+                    {hasPastInterviews ? (
+                        userInterviews!.map((interview) => (
+                            <InterviewCard {...interview} key={interview.id} />
+                        ))
+                    ) : (
+                        <p>You haven&apos;t taken any interviews yet</p>
                     )}
-
-
                 </div>
-
-
             </section>
-            <section className={"flex flex-col gap-6 mt-8"}>
-                <h2>
-                    Take an Interview
-                </h2>
-                <div className="interviews-secton">
 
-                    {dummyInterviews.map((interview)=>
-                        <InterviewCard {...interview} key={interview.id}/>
+            {/* Take an Interview */}
+            <section className="flex flex-col gap-6 mt-8">
+                <h2>Take an Interview</h2>
+
+                <div className="interviews-section">
+                    {hasUpcomingInterviews ? (
+                        latestInterviews!.map((interview) => (
+                            <InterviewCard {...interview} key={interview.id} />
+                        ))
+                    ) : (
+                        <p>There are no new interviews available</p>
                     )}
-                    {/*
-                        <p>
-                          You haven't taken any interviews yet
-                        </p>
-                        */}
-
                 </div>
-
-
             </section>
         </>
-    )
-}
-export default Page
+    );
+};
+
+export default Page;

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {getRandomInterviewCover} from "@/lib/utils";
 import DisplayTechIcons from "@/components/DisplayTechicons";
+import {InterviewCardProps, Feedback} from "@/types";
 
 
 const InterviewCard = ({interviewId, userId, role, type, techstack, createdAt}:InterviewCardProps) => {

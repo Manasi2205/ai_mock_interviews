@@ -10,6 +10,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",
+    "@vapi-ai/web": "^2.5.2",
     "abort-controller": "^3.0.0",
     "acorn": "^8.15.0",
     "acorn-jsx": "^5.3.2",
@@ -150,6 +151,8 @@
     "google-logging-utils": "^0.0.2",
     "gopd": "^1.2.0",
     "graceful-fs": "^4.2.11",
+    "grok-sdk": "^0.0.1-security",
+    "groq-sdk": "^0.37.0",
     "gtoken": "^7.1.0",
     "has-bigints": "^1.1.0",
     "has-flag": "^4.0.0",
@@ -407,6 +410,7 @@
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
