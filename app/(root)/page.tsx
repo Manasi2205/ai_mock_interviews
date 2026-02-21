@@ -20,8 +20,8 @@ const Page = async () => {
 
     // 📦 Fetch interviews in parallel
     const [userInterviews, latestInterviews] = await Promise.all([
-        getInterviewsByUserId(user.id),
-        getLatestInterviews({ userId: user.id, limit: 20 }),
+         getInterviewsByUserId(user?.id!),
+         getLatestInterviews({ userId: user?.id! }),
     ]);
 
     const hasPastInterviews = (userInterviews?.length ?? 0) > 0;

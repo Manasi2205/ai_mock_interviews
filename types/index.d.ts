@@ -1,4 +1,4 @@
-export interface Feedback {
+interface Feedback {
   id: string;
   interviewId: string;
   totalScore: number;
@@ -13,21 +13,33 @@ export interface Feedback {
   createdAt: string;
 }
 
-export interface CreateFeedbackParams {
+interface Interview {
+  id: string;
+  role: string;
+  level: string;
+  questions: string[];
+  techstack: string[];
+  createdAt: string;
+  userId: string;
+  type: string;
+  finalized: boolean;
+}
+
+interface CreateFeedbackParams {
   interviewId: string;
   userId: string;
   transcript: { role: string; content: string }[];
   feedbackId?: string;
 }
 
-export interface User {
+interface User {
   name: string;
   email: string;
   id: string;
 }
 
-export interface InterviewCardProps {
-  interviewId?: string;
+interface InterviewCardProps {
+  id?: string;
   userId?: string;
   role: string;
   type: string;
@@ -35,7 +47,7 @@ export interface InterviewCardProps {
   createdAt?: string;
 }
 
-export interface AgentProps {
+interface AgentProps {
   userName: string;
   userId?: string;
   interviewId?: string;
@@ -44,36 +56,36 @@ export interface AgentProps {
   questions?: string[];
 }
 
-export interface RouteParams {
+interface RouteParams {
   params: Promise<Record<string, string>>;
   searchParams: Promise<Record<string, string>>;
 }
 
-export interface GetFeedbackByInterviewIdParams {
+interface GetFeedbackByInterviewIdParams {
   interviewId: string;
   userId: string;
 }
 
-export interface GetLatestInterviewsParams {
+interface GetLatestInterviewsParams {
   userId: string;
   limit?: number;
 }
 
-export interface SignInParams {
+interface SignInParams {
   email: string;
   idToken: string;
 }
 
-export interface SignUpParams {
+interface SignUpParams {
   uid: string;
   name: string;
   email: string;
   password: string;
 }
 
-export type FormType = "sign-in" | "sign-up";
+type FormType = "sign-in" | "sign-up";
 
-export interface InterviewFormProps {
+interface InterviewFormProps {
   interviewId: string;
   role: string;
   level: string;
@@ -82,21 +94,6 @@ export interface InterviewFormProps {
   amount: number;
 }
 
-export interface TechIconProps {
+interface TechIconProps {
   techStack: string[];
 }
-type InterviewType = "technical" | "behavioral" | "mixed";
-
-export interface Interview {
-  id: string;
-  role: string;
-  level: string;
-  questions: string[];
-  techstack: string[];
-  createdAt: string;
-  userId: string;
-  type: InterviewType;
-  finalized: boolean;
-}
-
-

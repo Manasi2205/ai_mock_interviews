@@ -2,7 +2,7 @@
 
 import { auth, db } from "@/firebase/admin";
 import { cookies } from "next/headers";
-import { User, Interview, SignUpParams, SignInParams, GetLatestInterviewsParams } from "@/types";
+
 
 const SESSION_DURATION = 60 * 60 * 24 * 7;
 
@@ -72,15 +72,6 @@ export async function signIn(params: SignInParams) {
   const { email, idToken } = params;
 
   try {
-    // Verify the idToken to ensure it's valid and matches the email
-    const decodedToken = await auth.verifyIdToken(idToken);
-    if (decodedToken.email !== email) {
-      return {
-        success: false,
-        message: "Invalid token. Please try again.",
-      };
-    }
-
     const userRecord = await auth.getUserByEmail(email);
     if (!userRecord)
       return {
@@ -89,13 +80,8 @@ export async function signIn(params: SignInParams) {
       };
 
     await setSessionCookie(idToken);
-
-    return {
-      success: true,
-      message: "Signed in successfully.",
-    };
   } catch (error: any) {
-    console.error("Error signing in:", error);
+    console.log("");
 
     return {
       success: false,
@@ -139,78 +125,42 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function getInterviewsByUserId(userId: string): Promise<Interview[] | null> {
+  if (!userId) return null;
     
-  const interviews = await db.collection('interviews').where('userId', '==', userId).orderBy('createdAt', 'desc').get();
+  const interviews = await db.collection('interviews')
+    .where('userId', '==', userId)
+    .orderBy('createdAt', 'desc')
+    .get();
 
-    return interviews.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as Interview[];
-    
+  return interviews.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as Interview[];
 }  
 
 export async function getLatestInterviews(
   params: GetLatestInterviewsParams
 ): Promise<Interview[] | null> {
-  const { userId, limit = 10 } = params; // Default limit to 10 if not provided
+  const { userId, limit = 10 } = params;
 
-  // Fetch all finalized interviews, then filter out the user's own interviews in code
+  if (!userId) return null;
+
   const interviews = await db
     .collection('interviews')
     .where('finalized', '==', true)
+    .where('userId', '!=', userId)
     .orderBy('createdAt', 'desc')
-    .limit(limit * 2) // Fetch more to account for filtering
+    .limit(limit)
     .get();
 
-  const filteredInterviews = interviews.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }) as Interview)
-    .filter((interview) => interview.userId !== userId)
-    .slice(0, limit); // Limit after filtering
-
-  return filteredInterviews;
+  return interviews.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Interview[];
 }
 
 
 export async function isAuthenticated() {
   const user = await getCurrentUser();
   return !!user;
-}
-import { Timestamp } from "firebase-admin/firestore";
-export async function createInterviewSession(userId: string) {
-  try {
-    if (!userId) {
-      return { success: false, message: "User ID is required" };
-    }
-
-    const interview = {
-      userId,
-      role: "",
-      type: "mixed",
-      level: "unknown",
-      techstack: [],
-      questions: [],
-      amount: 0,
-      transcript: [],
-      callCompleted: false,
-      finalized: false,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    };
-
-    const docRef = await db.collection("interviews").add(interview);
-
-    return {
-      success: true,
-      interviewId: docRef.id,
-    };
-  } catch (error) {
-    console.error("❌ Error creating interview session:", error);
-    return {
-      success: false,
-      message: "Failed to create interview session",
-    };
-  }
 }
