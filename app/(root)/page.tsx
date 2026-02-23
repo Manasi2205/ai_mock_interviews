@@ -6,9 +6,9 @@ import Image from "next/image";
 import InterviewCard from "@/components/InterviewCard";
 import {
     getCurrentUser,
-    getInterviewsByUserId,
     getLatestInterviews,
 } from "@/lib/actions/auth.action";
+import { getInterviewsWithFeedback } from "@/lib/actions/general.action";
 
 const Page = async () => {
     const user = await getCurrentUser();
@@ -20,7 +20,7 @@ const Page = async () => {
 
     // 📦 Fetch interviews in parallel
     const [userInterviews, latestInterviews] = await Promise.all([
-         getInterviewsByUserId(user?.id!),
+         getInterviewsWithFeedback(user?.id!),
          getLatestInterviews({ userId: user?.id! }),
     ]);
 
@@ -60,9 +60,10 @@ const Page = async () => {
 
                 <div className="interviews-section">
                     {hasPastInterviews ? (
-                        userInterviews!.map((interview) => (
-                            <InterviewCard {...interview} key={interview.id} />
-                        ))
+                        userInterviews!.map((interview, index) => {
+                            const interviewKey = interview?.id || `interview-${index}`;
+                            return <InterviewCard {...interview} key={interviewKey} />;
+                        })
                     ) : (
                         <p>You haven&apos;t taken any interviews yet</p>
                     )}

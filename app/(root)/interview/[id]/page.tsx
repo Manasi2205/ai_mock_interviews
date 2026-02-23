@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions/general.action";
 import { getCurrentUser } from "@/lib/actions/auth.action";
 import DisplayTechIcons from "@/components/DisplayTechicons";
+import { RouteParams } from "@/types";
 
 const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;

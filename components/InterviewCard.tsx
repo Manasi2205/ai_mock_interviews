@@ -5,9 +5,9 @@ import Image from "next/image";
 import { Button } from "./ui/button";
 import { getRandomInterviewCover } from "@/lib/utils";
 import DisplayTechIcons from "@/components/DisplayTechicons";
+import { InterviewCardProps } from "@/types";
 
-const InterviewCard = ({id, userId, role, type, techstack, createdAt}: InterviewCardProps) => {
-    const feedback = null as Feedback | null;
+const InterviewCard = ({id, userId, role, type, techstack, createdAt, feedback}: InterviewCardProps) => {
     const normalizedType = /mix/gi.test(type)? 'Mixed': type;
       const formattedDate = dayjs(
     feedback?.createdAt || createdAt || Date.now()

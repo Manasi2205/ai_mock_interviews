@@ -34,21 +34,41 @@ interface AgentProps {
 
 // ---------------- COMPONENT ----------------
 
-const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: AgentProps) => {
+const Agent = ({
+  userName,
+  userId,
+  type,
+  questions,
+  interviewId,
+  feedbackId,
+}: AgentProps) => {
   const router = useRouter();
 
+  // ✅ SINGLE VAPI INSTANCE
   const vapiRef = useRef<any>(null);
-  if (!vapiRef.current) vapiRef.current = createVapi();
-  const vapi = vapiRef.current;
+  const startingRef = useRef(false);
 
-  const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
+  const [callStatus, setCallStatus] = useState<CallStatus>(
+    CallStatus.INACTIVE
+  );
   const [messages, setMessages] = useState<SavedMessage[]>([]);
-  const [lastMessage, setLastMessage] = useState<string>("");
+  const [lastMessage, setLastMessage] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // ---------------- INIT VAPI (RUN ONCE) ----------------
+
+  useEffect(() => {
+    if (!vapiRef.current) {
+      vapiRef.current = createVapi();
+    }
+  }, []);
 
   // ---------------- VAPI EVENTS ----------------
 
   useEffect(() => {
+    const vapi = vapiRef.current;
+    if (!vapi) return;
+
     const onCallStart = () => {
       console.log("📞 Call started");
       setCallStatus(CallStatus.ACTIVE);
@@ -66,7 +86,10 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
         if (message.transcriptType === "final") {
           setMessages((prev) => [
             ...prev,
-            { role: message.role, content: message.transcript },
+            {
+              role: message.role,
+              content: message.transcript,
+            },
           ]);
         }
       }
@@ -74,7 +97,12 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
 
     const onSpeechStart = () => setIsSpeaking(true);
     const onSpeechEnd = () => setIsSpeaking(false);
-    const onError = (err: any) => console.error("❌ Vapi error:", err);
+
+    // ✅ Ignore empty Vapi shutdown errors
+    const onError = (err: any) => {
+      if (!err || Object.keys(err).length === 0) return;
+      console.error("❌ Vapi error:", err);
+    };
 
     vapi.on("call-start", onCallStart);
     vapi.on("call-end", onCallEnd);
@@ -83,6 +111,7 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
     vapi.on("speech-end", onSpeechEnd);
     vapi.on("error", onError);
 
+    // ✅ CLEANUP ONLY EVENTS (NOT stop())
     return () => {
       vapi.off("call-start", onCallStart);
       vapi.off("call-end", onCallEnd);
@@ -90,18 +119,27 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
       vapi.off("speech-start", onSpeechStart);
       vapi.off("speech-end", onSpeechEnd);
       vapi.off("error", onError);
-      vapi.stop();
     };
-  }, [vapi]);
+  }, []);
 
-  // ---------------- SEND TRANSCRIPT AFTER CALL ----------------
+  // ---------------- TRANSCRIPT STATE ----------------
+
   useEffect(() => {
     if (messages.length > 0) {
       setLastMessage(messages[messages.length - 1].content);
     }
+  }, [messages]);
 
-    const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-      console.log("handleGenerateFeedback");
+  // ---------------- FEEDBACK AFTER CALL ----------------
+
+  useEffect(() => {
+    if (callStatus !== CallStatus.FINISHED) return;
+
+    const handleGenerateFeedback = async () => {
+      if (type === "generate") {
+        router.push("/");
+        return;
+      }
 
       const { success, feedbackId: id } = await createFeedback({
         interviewId: interviewId!,
@@ -113,24 +151,24 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
       if (success && id) {
         router.push(`/interview/${interviewId}/feedback`);
       } else {
-        console.log("Error saving feedback");
         router.push("/");
       }
     };
 
-    if (callStatus === CallStatus.FINISHED) {
-      if (type === "generate") {
-        router.push("/");
-      } else {
-        handleGenerateFeedback(messages);
-      }
+    if (messages.length > 0) {
+      handleGenerateFeedback();
     }
-  }, [messages, callStatus, interviewId, router, type, userId, feedbackId]);
+  }, [callStatus]);
+
+  // ---------------- GENERATE MODE SAVE ----------------
 
   useEffect(() => {
-    if (callStatus !== CallStatus.FINISHED) return;
-    if (messages.length === 0) return;
-    if (type !== "generate") return;
+    if (
+      callStatus !== CallStatus.FINISHED ||
+      messages.length === 0 ||
+      type !== "generate"
+    )
+      return;
 
     const sendTranscript = async () => {
       try {
@@ -143,23 +181,34 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
           }),
         });
 
-        console.log("✅ Transcript saved → redirecting home");
-        router.push("/");
+        console.log("✅ Transcript saved → redirect");
       } catch (err) {
-        console.error("❌ Failed to save transcript:", err);
-        router.push("/");
+        console.error("❌ Failed saving transcript:", err);
       }
+
+      router.push("/");
     };
 
     sendTranscript();
-  }, [callStatus, messages, router, userId, type]);
+  }, [callStatus]);
 
   // ---------------- HANDLE CALL ----------------
 
   const handleCall = async () => {
+    const vapi = vapiRef.current;
+    if (!vapi) return;
+
+    // ✅ prevent double start
+    if (startingRef.current) return;
+    startingRef.current = true;
+
     try {
-      vapi.stop();
       setCallStatus(CallStatus.CONNECTING);
+
+      // stop only if already active
+      if (callStatus === CallStatus.ACTIVE) {
+        await vapi.stop();
+      }
 
       if (type === "generate") {
         await vapi.start(
@@ -167,9 +216,14 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
           undefined,
           undefined,
           process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!,
-          { variableValues: { username: userName, userid: userId } }
+          {
+            variableValues: {
+              username: userName,
+              userid: userId,
+            },
+          }
         );
-} else if (interviewerConfig) {
+      } else if (interviewerConfig) {
         const formattedQuestions =
           questions?.map((q) => `- ${q}`).join("\n") || "";
 
@@ -180,10 +234,11 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
             messages: [
               {
                 role: "system",
-                content: (interviewerConfig.model.messages?.[0]?.content || "").replace(
-                  "{{questions}}",
-                  formattedQuestions
-                ),
+                content:
+                  interviewerConfig.model?.messages?.[0]?.content.replace(
+                    "{{questions}}",
+                    formattedQuestions
+                  ) || "",
               },
             ],
           },
@@ -192,12 +247,17 @@ const Agent = ({ userName, userId, type, questions, interviewId, feedbackId }: A
     } catch (err) {
       console.error("❌ Failed to start Vapi:", err);
       setCallStatus(CallStatus.INACTIVE);
+    } finally {
+      startingRef.current = false;
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
+    const vapi = vapiRef.current;
+    if (!vapi) return;
+
     console.log("🛑 Manual disconnect");
-    vapi.stop();
+    await vapi.stop();
     setCallStatus(CallStatus.FINISHED);
   };
 

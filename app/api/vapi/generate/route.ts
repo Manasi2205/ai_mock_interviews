@@ -28,6 +28,14 @@ export async function POST(request: Request) {
 
     console.log("🧠 Extracting interview config from transcript...");
 
+    // Validate API key exists
+    if (!process.env.GROQ_API_KEY) {
+      return Response.json(
+        { success: false, message: "GROQ_API_KEY is not configured" },
+        { status: 500 }
+      );
+    }
+
     const conversationText = transcript
       .map((m: any) => `${m.role}: ${m.content}`)
       .join("\n");
@@ -37,6 +45,9 @@ export async function POST(request: Request) {
      * STEP 1 → AI CONFIG EXTRACTION (INCLUDING TYPE)
      * =========================================================
      */
+    console.log("🔑 Groq API Key present:", !!process.env.GROQ_API_KEY, "Length:", process.env.GROQ_API_KEY?.length);
+    console.log("📝 Conversation text length:", conversationText.length);
+    
     const extract = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
@@ -68,6 +79,9 @@ Format:
       ],
       temperature: 0,
       max_tokens: 200,
+    }).catch((err) => {
+      console.error("❌ Groq extract error:", err);
+      throw err;
     });
 
     /**
